@@ -210,10 +210,10 @@ void ConsoleUI::showPlanByCargoTime(const FreightManager& fm, const CargoManager
 	MatchingEngine::printPlanSortedByCargoTime(freights, cargos);
 }
 
-void ConsoleUI::showPlanByFreightLoad(const FreightManager& fm, const CargoManager& cm) const {
+void ConsoleUI::showPlanByMinimumFreight(const FreightManager& fm, const CargoManager& cm) const {
 	auto freights = fm.list();
 	auto cargos = cm.list();
-	MatchingEngine::printPlanSortedByFreightLoad(freights, cargos);
+	MatchingEngine::printPlanSortedByMinimumFreight(freights, cargos);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////

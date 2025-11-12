@@ -7,7 +7,7 @@ static string trimLocal(const string& s) { return trim(s); }
 
 static bool parseCargoRow(const string& line, Cargo& out) {
     stringstream ss(line);
-    string id, dest, deadlineStr;
+    string id, dest, deadlineStr, groupStr;
 
     if (!getline(ss, id, ',')) return false;
     if (!getline(ss, dest, ',')) return false;
@@ -18,7 +18,23 @@ static bool parseCargoRow(const string& line, Cargo& out) {
     
     int d = parseTimeToMinutes(deadlineStr);
     if (d < 0 || d >= 24 * 60) return false;
-    out = Cargo(id, dest, d);
+    
+    // Try to read the optional group size from 4th column
+    int groupSize = 1; // default
+    if (getline(ss, groupStr, ',')) {
+        groupStr = trimLocal(groupStr);
+        if (!groupStr.empty()) {
+            try {
+                groupSize = stoi(groupStr);
+                if (groupSize < 1) groupSize = 1;
+                if (groupSize > 10) groupSize = 10;
+            } catch (...) {
+                groupSize = 1;
+            }
+        }
+    }
+    
+    out = Cargo(id, dest, d, groupSize);
     
     return true;
 }

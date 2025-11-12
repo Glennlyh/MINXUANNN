@@ -71,7 +71,7 @@ int main() {
         else if (choice == "4") {
             std::cout << "Show schedule:\n"
                 << "  a) Sorted by cargo arrival time\n"
-                << "  b) Sorted by freight load\n"
+                << "  b) Sorted by minimum freight\n"
                 << "  c) Back\n"
                 << "Select: ";
 
@@ -82,7 +82,7 @@ int main() {
                 ui.showPlanByCargoTime(fm, cm);
             }
             else if (viewAPlanOption == "b") {
-                ui.showPlanByFreightLoad(fm, cm);
+                ui.showPlanByMinimumFreight(fm, cm);
             }
         }
 
@@ -98,10 +98,10 @@ int main() {
             std::getline(std::cin, viewUPlanOption);
 
             if (viewUPlanOption == "a") {
-                ui.showPlanByFreightLoad(fm, cm);
+                MatchingEngine::printFreightsNotFull(fm.list(), cm.list());
             }
             else if (viewUPlanOption == "b") {
-                ui.showPlanByCargoTime(fm, cm);
+                MatchingEngine::printUnassignedCargos(fm.list(), cm.list());
             }
         }
 

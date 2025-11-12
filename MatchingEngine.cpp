@@ -351,78 +351,91 @@ void MatchingEngine::printPlanSortedByCargoTime(const vector<Freight>& freights,
     vector<int> capLeft, remain;
     buildPackedPlan(freights, cargos, plan, capLeft, remain);
 
-    vector<size_t> order(plan.size());
-    iota(order.begin(), order.end(), 0);
-    sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-        int ca = cargos[plan[a].ci].getDeadline();
-        int cb = cargos[plan[b].ci].getDeadline();
-        if (ca != cb) return ca < cb;
+    // Group plan rows by cargo index
+    map<int, vector<size_t>> cargoGroups;
+    for (size_t k = 0; k < plan.size(); ++k) {
+        cargoGroups[plan[k].ci].push_back(k);
+    }
 
-        int fa = freights[plan[a].fi].getTime();
-        int fb = freights[plan[b].fi].getTime();
-        return fa < fb;
-        });
+    // Sort cargo indices by deadline (ascending order)
+    vector<int> sortedCargoIndices;
+    for (const auto& pair : cargoGroups) {
+        sortedCargoIndices.push_back(pair.first);
+    }
+    sort(sortedCargoIndices.begin(), sortedCargoIndices.end(), [&](int a, int b) {
+        int da = cargos[a].getDeadline();
+        int db = cargos[b].getDeadline();
+        if (da != db) return da < db;
+        return cargos[a].getId() < cargos[b].getId();
+    });
 
     cout << "Scheduling plan (sorted by cargo arrival time):\n";
-    for (size_t k = 0; k < order.size(); ++k) {
-        const Row& r = plan[order[k]];
-        const Freight& f = freights[r.fi];
-        const Cargo& c = cargos[r.ci];
-
+    for (int ci : sortedCargoIndices) {
+        const Cargo& c = cargos[ci];
+        
+        // Calculate total assigned and remaining for this cargo
+        int groupSize = c.getGroupSize();
+        groupSize = (groupSize > 0 ? groupSize : 1);
+        int assigned = groupSize - remain[ci];
+        
         cout << "  Cargo " << c.getId()
-            << " (deadline=" << minutesToHHMM12(c.getDeadline()) << ")"
-            << " <- " << r.cnt << " unit(s) via Freight " << f.getId()
-            << " (depart=" << minutesToHHMM12(f.getTime()) << ", dest=" << f.getDest() << ")\n";
+             << " [" << assigned << "/" << groupSize << "] "
+             << "(" << c.getDest() << " deadline=" << minutesToHHMM12(c.getDeadline()) << ")\n";
+        
+        // List all freights assigned to this cargo
+        for (size_t k : cargoGroups[ci]) {
+            const Row& r = plan[k];
+            const Freight& f = freights[r.fi];
+            cout << "      <- " << r.cnt << " unit(s) via Freight " << f.getId()
+                 << " (depart=" << minutesToHHMM12(f.getTime()) << ")\n";
+        }
     }
 }
 
-void MatchingEngine::printPlanSortedByFreightLoad(const vector<Freight>& freights,
-                                                  const vector<Cargo>& cargos) {
+void MatchingEngine::printPlanSortedByMinimumFreight(const vector<Freight>& freights,
+                                                     const vector<Cargo>& cargos) {
     vector<Row> plan;
     vector<int> capLeft, remain;
     buildPackedPlan(freights, cargos, plan, capLeft, remain);
 
-    struct Load { int fi; int used; int cap; };
-    vector<Load> loads;
-    loads.reserve(freights.size());
-
-    for (size_t i = 0; i < freights.size(); ++i) {
-        int cap = freights[i].getMaxCapacity();
-        cap = (cap > 0 ? cap : 1);
-        int used = cap - capLeft[i];
-        loads.push_back(Load{ static_cast<int>(i), used, cap });
+    // Group plan rows by freight index
+    map<int, vector<size_t>> freightGroups;
+    for (size_t k = 0; k < plan.size(); ++k) {
+        freightGroups[plan[k].fi].push_back(k);
     }
 
-    sort(loads.begin(), loads.end(), [&](const Load& a, const Load& b) {
-        if (a.used != b.used)
-            return a.used > b.used; 
-        if (a.cap != b.cap)
-            return a.cap > b.cap; 
-        
-        return freights[a.fi].getTime() < freights[b.fi].getTime();
-        });
+    // Sort freight indices by freight ID (ascending order)
+    vector<int> sortedFreightIndices;
+    for (const auto& pair : freightGroups) {
+        sortedFreightIndices.push_back(pair.first);
+    }
+    sort(sortedFreightIndices.begin(), sortedFreightIndices.end(), [&](int a, int b) {
+        return freights[a].getId() < freights[b].getId();
+    });
 
-    cout << "Scheduling plan (sorted by freight load):\n";
-    for (size_t li = 0; li < loads.size(); ++li) {
-        const Load& L = loads[li];
-        if (L.used <= 0)
-            continue;
+    cout << "Scheduling plan (sorted by minimum freight):\n";
+    for (int fi : sortedFreightIndices) {
+        const Freight& f = freights[fi];
         
-        const Freight& f = freights[L.fi];
+        // Calculate capacity usage
+        int cap = f.getMaxCapacity();
+        cap = (cap > 0 ? cap : 1);
+        int used = cap - capLeft[fi];
+        
         cout << "  Freight " << f.getId()
-             << " [" << L.used << "/" << L.cap << "] "
+             << " [" << used << "/" << cap << "] "
              << "(" << f.getDest() << " " << minutesToHHMM12(f.getTime()) << ")\n";
         
-        for (size_t k = 0; k < plan.size(); ++k) {
+        // List all cargos assigned to this freight
+        for (size_t k : freightGroups[fi]) {
             const Row& r = plan[k];
-            if (r.fi != L.fi)
-                continue;
             const Cargo& c = cargos[r.ci];
             cout << "      <- " << r.cnt << " unit(s) of Cargo " << c.getId()
-                << " (deadline=" << minutesToHHMM12(c.getDeadline()) << ")\n";
+                 << " (deadline=" << minutesToHHMM12(c.getDeadline()) << ")\n";
         }
     }
 }
+
 
 void MatchingEngine::printFreightsNotFull(const vector<Freight>& freights,
                                           const vector<Cargo>& cargos) {
