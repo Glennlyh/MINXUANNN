@@ -351,28 +351,44 @@ void MatchingEngine::printPlanSortedByCargoTime(const vector<Freight>& freights,
     vector<int> capLeft, remain;
     buildPackedPlan(freights, cargos, plan, capLeft, remain);
 
-    vector<size_t> order(plan.size());
-    iota(order.begin(), order.end(), 0);
-    sort(order.begin(), order.end(), [&](size_t a, size_t b) {
-        int ca = cargos[plan[a].ci].getDeadline();
-        int cb = cargos[plan[b].ci].getDeadline();
-        if (ca != cb) return ca < cb;
+    // Group plan rows by cargo index
+    map<int, vector<size_t>> cargoGroups;
+    for (size_t k = 0; k < plan.size(); ++k) {
+        cargoGroups[plan[k].ci].push_back(k);
+    }
 
-        int fa = freights[plan[a].fi].getTime();
-        int fb = freights[plan[b].fi].getTime();
-        return fa < fb;
-        });
+    // Sort cargo indices by deadline (ascending order)
+    vector<int> sortedCargoIndices;
+    for (const auto& pair : cargoGroups) {
+        sortedCargoIndices.push_back(pair.first);
+    }
+    sort(sortedCargoIndices.begin(), sortedCargoIndices.end(), [&](int a, int b) {
+        int da = cargos[a].getDeadline();
+        int db = cargos[b].getDeadline();
+        if (da != db) return da < db;
+        return cargos[a].getId() < cargos[b].getId();
+    });
 
     cout << "Scheduling plan (sorted by cargo arrival time):\n";
-    for (size_t k = 0; k < order.size(); ++k) {
-        const Row& r = plan[order[k]];
-        const Freight& f = freights[r.fi];
-        const Cargo& c = cargos[r.ci];
-
+    for (int ci : sortedCargoIndices) {
+        const Cargo& c = cargos[ci];
+        
+        // Calculate total assigned and remaining for this cargo
+        int groupSize = c.getGroupSize();
+        groupSize = (groupSize > 0 ? groupSize : 1);
+        int assigned = groupSize - remain[ci];
+        
         cout << "  Cargo " << c.getId()
-            << " (deadline=" << minutesToHHMM12(c.getDeadline()) << ")"
-            << " <- " << r.cnt << " unit(s) via Freight " << f.getId()
-            << " (depart=" << minutesToHHMM12(f.getTime()) << ", dest=" << f.getDest() << ")\n";
+             << " [" << assigned << "/" << groupSize << "] "
+             << "(" << c.getDest() << " deadline=" << minutesToHHMM12(c.getDeadline()) << ")\n";
+        
+        // List all freights assigned to this cargo
+        for (size_t k : cargoGroups[ci]) {
+            const Row& r = plan[k];
+            const Freight& f = freights[r.fi];
+            cout << "      <- " << r.cnt << " unit(s) via Freight " << f.getId()
+                 << " (depart=" << minutesToHHMM12(f.getTime()) << ")\n";
+        }
     }
 }
 
