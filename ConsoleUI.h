@@ -46,7 +46,7 @@ public:
 
 	// Menu Option 5 - Show Assigned Plans
 	void showPlanByCargoTime(const FreightManager& fm, const CargoManager& cm) const;
-	void showPlanByFreightLoad(const FreightManager& fm, const CargoManager& cm) const;
+	void showPlanByMinimumFreight(const FreightManager& fm, const CargoManager& cm) const;
 	
 	// Menu Option 7 - Save & Export
 	void saveScheduleAndCSV(const FreightManager& fm, const CargoManager& cm, const std::string& txtFilename);

@@ -1,0 +1,12 @@
+# Compiled binary
+scheduler
+
+# Build artifacts
+*.o
+*.exe
+*.out
+*.app
+
+# Test data
+*.txt
+*.csv

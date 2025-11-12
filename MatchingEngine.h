@@ -42,8 +42,8 @@ public:
     static void printPlanSortedByCargoTime(const std::vector<Freight>& freights,
                                            const std::vector<Cargo>& cargos);
 
-    static void printPlanSortedByFreightLoad(const std::vector<Freight>& freights, 
-                                             const std::vector<Cargo>& cargos);
+    static void printPlanSortedByMinimumFreight(const std::vector<Freight>& freights, 
+                                                const std::vector<Cargo>& cargos);
 
     static void printFreightsNotFull(const std::vector<Freight>& freights,
                                      const std::vector<Cargo>& cargos);

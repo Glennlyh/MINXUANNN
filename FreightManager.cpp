@@ -1,13 +1,32 @@
 #include "FreightManager.h"
 #include <fstream>
 #include <sstream>
+#include <cctype>
 using namespace std;
 
 static string trimLocal(const string& s) { return trim(s); }
 
+static FreightType parseFreightType(const string& typeStr) {
+    string s = trimLocal(typeStr);
+    // Convert to lowercase for comparison
+    for (char& c : s) {
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    
+    if (s == "megacarrier" || s == "mega" || s == "12")
+        return FreightType::MegaCarrier;
+    if (s == "cargocruiser" || s == "cruiser" || s == "6")
+        return FreightType::CargoCruiser;
+    if (s == "minimover" || s == "mini" || s == "2")
+        return FreightType::MiniMover;
+    
+    // Default to MiniMover if unknown
+    return FreightType::MiniMover;
+}
+
 static bool parseFreightRow(const string& line, Freight& out) {
     stringstream ss(line);
-    string id, dest, timeStr;
+    string id, dest, timeStr, typeStr;
     if (!getline(ss, id, ','))
         return false;
     if (!getline(ss, dest, ','))
@@ -24,7 +43,17 @@ static bool parseFreightRow(const string& line, Freight& out) {
     int t = parseTimeToMinutes(timeStr);
     if (t < 0 || t >= 24 * 60)
         return false;
-    out = Freight(id, dest, t);
+    
+    // Try to read the optional freight type from 4th column
+    FreightType type = FreightType::MiniMover; // default
+    if (getline(ss, typeStr, ',')) {
+        typeStr = trimLocal(typeStr);
+        if (!typeStr.empty()) {
+            type = parseFreightType(typeStr);
+        }
+    }
+    
+    out = Freight(id, dest, t, type);
 
     return true;
 }
